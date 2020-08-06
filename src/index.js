@@ -507,7 +507,7 @@ export default class RNPickerSelect extends PureComponent {
     }
 
     renderTextInputOrChildren() {
-        const { children, style, textInputProps, dateFormat } = this.props;
+        const { children, style, textInputProps, dateFormat, useDatePicker } = this.props;
         const { selectedItem } = this.state;
 
         const containerStyle =
@@ -597,7 +597,7 @@ export default class RNPickerSelect extends PureComponent {
                             <DateTimePicker
                                 testID="ios_date_picker"
                                 onChange={this.onDateValueChange}
-                                value={selectedItem.value}
+                                value={selectedItem[0].value}
                                 {...pickerProps}
                             />
                         :
@@ -644,7 +644,7 @@ export default class RNPickerSelect extends PureComponent {
                         <DateTimePicker
                             testID="android_date_picker_headless"
                             onChange={this.onDateValueChange}
-                            value={selectedItem.value}
+                            value={selectedItem[0].value}
                             {...pickerProps}
                         />
                     :
@@ -689,7 +689,7 @@ export default class RNPickerSelect extends PureComponent {
                     <DateTimePicker
                         testID="android_date_picker_headless"
                         onChange={this.onDateValueChange}
-                        value={selectedItem.value}
+                        value={selectedItem[0].value}
                         {...pickerProps}
                     />
                 :
