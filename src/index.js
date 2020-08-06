@@ -3,6 +3,8 @@ import { Keyboard, Modal, Platform, Text, TextInput, TouchableOpacity, View } fr
 import PropTypes from 'prop-types';
 import isEqual from 'lodash.isequal';
 import { Picker } from '@react-native-community/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import moment from 'moment';
 import { defaultStyles } from './styles';
 
 export default class RNPickerSelect extends PureComponent {
@@ -59,6 +61,10 @@ export default class RNPickerSelect extends PureComponent {
 
         // The width of the item picker for each wheel
         itemWidth: PropTypes.array,
+
+        // Use date picker
+        useDatePicker: PropTypes.bool,
+        dateFormat: PropTypes.string,
     };
 
     static defaultProps = {
@@ -73,6 +79,8 @@ export default class RNPickerSelect extends PureComponent {
         style: {},
         children: null,
         useNativeAndroidPickerStyle: true,
+        useDatePicker: false,
+        dateFormat: 'M/D/YYYY',
         doneText: 'Done',
         onDonePress: null,
         onUpArrow: null,
@@ -98,36 +106,51 @@ export default class RNPickerSelect extends PureComponent {
         return items;
     }
 
+    static isDate(obj) {
+        return Object.prototype.toString.call(obj) === "[object Date]";
+    };
+
     static getSelectedItem({ items, key, value }) {
         items = Array.isArray(items[0]) ? items : [items];
         key = key && Array.isArray(key[0]) ? key : [key];
         value = value && Array.isArray(items[0]) ? value : [value];
 
-        // One selectedItem/idx entry per wheel.
-        // selectedItem is an array of picker items; [{label:la,value:va},{label:lb,value:vb}...]
-        // idx is an array of item indices corresponding 1:1 with selectedItems. selectedItem[0] has an
-        // index of idx[0], selectedItem[1] of idx[1], etc.
-        selectedItem = [];
-        idx = [];
-        const oneWheel = items.length === 1;
-        for (let wheelIndex = 0; wheelIndex < items.length; wheelIndex++) {
-            let itemIndex = items[wheelIndex].findIndex((item) => {
-                if (item.key && key) {
-                    return isEqual(item.key, oneWheel ? key : key[wheelIndex]);
+        if (!RNPickerSelect.isDate(value)) {
+            // One selectedItem/idx entry per wheel.
+            // selectedItem is an array of picker items; [{label:la,value:va},{label:lb,value:vb}...]
+            // idx is an array of item indices corresponding 1:1 with selectedItems. selectedItem[0] has an
+            // index of idx[0], selectedItem[1] of idx[1], etc.
+            selectedItem = [];
+            idx = [];
+            const oneWheel = items.length === 1;
+            for (let wheelIndex = 0; wheelIndex < items.length; wheelIndex++) {
+                let itemIndex = items[wheelIndex].findIndex((item) => {
+                    if (item.key && key) {
+                        return isEqual(item.key, oneWheel ? key : key[wheelIndex]);
+                    }
+                    return isEqual(item.value, oneWheel ? value : value[wheelIndex]);
+                });
+                if (itemIndex === -1) {
+                    itemIndex = 0;
                 }
-                return isEqual(item.value, oneWheel ? value : value[wheelIndex]);
-            });
-            if (itemIndex === -1) {
-                itemIndex = 0;
-            }
 
-            selectedItem.push(items[wheelIndex][itemIndex] || {});
-            idx.push(itemIndex);
+                selectedItem.push(items[wheelIndex][itemIndex] || {});
+                idx.push(itemIndex);
+            }
+            return {
+                selectedItem,
+                idx,
+            };
+        } else {
+            return {
+                selectedItem: [{
+                    color: null,
+                    label: null,
+                    value: value || new Date()
+                }]
+            };
+
         }
-        return {
-            selectedItem,
-            idx,
-        };
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
@@ -227,6 +250,7 @@ export default class RNPickerSelect extends PureComponent {
 
         this.onUpArrow = this.onUpArrow.bind(this);
         this.onDownArrow = this.onDownArrow.bind(this);
+        this.onDateValueChange = this.onDateValueChange.bind(this);
         this.onValueChange = this.onValueChange.bind(this);
         this.onOrientationChange = this.onOrientationChange.bind(this);
         this.setInputRef = this.setInputRef.bind(this);
@@ -275,6 +299,20 @@ export default class RNPickerSelect extends PureComponent {
                 index = index[0];
             }
             onValueChange(value, index);
+        });
+    }
+
+    onDateValueChange(event, value) {
+        const { onValueChange } = this.props;
+
+        onValueChange(value);
+
+        this.setState((prevState) => {
+            let si = Object.assign({}, prevState.selectedItem);
+            si.value = value;
+            return {
+                selectedItem: si,
+            };
         });
     }
 
@@ -469,7 +507,7 @@ export default class RNPickerSelect extends PureComponent {
     }
 
     renderTextInputOrChildren() {
-        const { children, style, textInputProps } = this.props;
+        const { children, style, textInputProps, dateFormat } = this.props;
         const { selectedItem } = this.state;
 
         const containerStyle =
@@ -485,14 +523,18 @@ export default class RNPickerSelect extends PureComponent {
 
         // Create the displayed label by concatenating values across all wheels.
         let label = '';
-        selectedItem.forEach(i => {
+        if (!useDatePicker) {
+            selectedItem.forEach(i => {
             if (label.length > 0) {
                 label += ' ';
             }
             label += i.inputLabel || i.label;
-        });
-
-        return (
+           });
+        } else {
+            label = moment(selectedItem[0].value).format(dateFormat);
+        }
+                
+       return (
             <View pointerEvents="box-only" style={containerStyle}>
                 <TextInput
                     testID="text_input"
@@ -511,7 +553,7 @@ export default class RNPickerSelect extends PureComponent {
     }
 
     renderIOS() {
-        const { style, modalProps, pickerProps, touchableWrapperProps } = this.props;
+        const { style, modalProps, pickerProps, touchableWrapperProps, useDatePicker } = this.props;
         const { animationType, orientation, selectedItem, showPicker, items, itemWidth } = this.state;
 
         return (
@@ -550,6 +592,15 @@ export default class RNPickerSelect extends PureComponent {
                             style.modalViewBottom,
                         ]}
                     >
+                        {useDatePicker
+                        ? 
+                            <DateTimePicker
+                                testID="ios_date_picker"
+                                onChange={this.onDateValueChange}
+                                value={selectedItem.value}
+                                {...pickerProps}
+                            />
+                        :
                         <View style={[{justifyContent: 'center'}]}>
                             <View style={[{flexDirection: 'row', justifyContent: 'center'}]}>
                                 {items.map((wheel, wheelIndex) => {
@@ -568,6 +619,7 @@ export default class RNPickerSelect extends PureComponent {
                                 )}
                             </View>
                         </View>
+                        }
                     </View>
                 </Modal>
             </View>
@@ -575,7 +627,7 @@ export default class RNPickerSelect extends PureComponent {
     }
 
     renderAndroidHeadless() {
-        const { disabled, Icon, style, pickerProps, onOpen, touchableWrapperProps } = this.props;
+        const { disabled, Icon, style, pickerProps, onOpen, touchableWrapperProps, useDatePicker } = this.props;
         const { selectedItem, itemWidth } = this.state;
 
         return (
@@ -587,6 +639,15 @@ export default class RNPickerSelect extends PureComponent {
             >
                 <View style={style.headlessAndroidContainer}>
                     {this.renderTextInputOrChildren()}
+                    {useDatePicker
+                    ?
+                        <DateTimePicker
+                            testID="android_date_picker_headless"
+                            onChange={this.onDateValueChange}
+                            value={selectedItem.value}
+                            {...pickerProps}
+                        />
+                    :
                     <View style={[{justifyContent: 'center'}]}>
                         <View style={[{flexDirection: 'row', justifyContent: 'center',paddingLeft: 0}]}>
                             {items.map((wheel, wheelIndex) => {
@@ -611,41 +672,52 @@ export default class RNPickerSelect extends PureComponent {
                             )}
                         </View>
                     </View>
+                    }
                 </View>
             </TouchableOpacity>
         );
     }
 
     renderAndroidNativePickerStyle() {
-        const { disabled, Icon, style, pickerProps } = this.props;
+        const { disabled, Icon, style, pickerProps, useDatePicker } = this.props;
         const { selectedItem, itemWidth } = this.state;
 
         return (
             <View style={[defaultStyles.viewContainer, style.viewContainer]}>
-                    <View style={[{justifyContent: 'center'}]}>
-                        <View style={[{flexDirection: 'row', justifyContent: 'center',paddingLeft: 0}]}>
-                            {items.map((wheel, wheelIndex) => {
-                                return (
-                                    <View style={{width: itemWidth[wheelIndex]}}>
-                                        <Picker
-                                            style={[
-                                                Icon ? { backgroundColor: 'transparent' } : {}, // to hide native icon
-                                                style.inputAndroid,
-                                                this.getPlaceholderStyle(),
-                                            ]}
-                                            testID="android_picker_headless"
-                                            enabled={!disabled}
-                                            onValueChange={(value, index) => this.onValueChange(wheelIndex, value, index)}
-                                            selectedValue={selectedItem[wheelIndex].value}
-                                            {...pickerProps}
-                                        >
-                                            {this.renderPickerItems(wheelIndex)}
-                                        </Picker>
-                                    </View>
-                                )}
+                {useDatePicker
+                ?
+                    <DateTimePicker
+                        testID="android_date_picker_headless"
+                        onChange={this.onDateValueChange}
+                        value={selectedItem.value}
+                        {...pickerProps}
+                    />
+                :
+                <View style={[{justifyContent: 'center'}]}>
+                    <View style={[{flexDirection: 'row', justifyContent: 'center',paddingLeft: 0}]}>
+                        {items.map((wheel, wheelIndex) => {
+                            return (
+                                <View style={{width: itemWidth[wheelIndex]}}>
+                                    <Picker
+                                        style={[
+                                            Icon ? { backgroundColor: 'transparent' } : {}, // to hide native icon
+                                            style.inputAndroid,
+                                            this.getPlaceholderStyle(),
+                                        ]}
+                                        testID="android_picker_headless"
+                                        enabled={!disabled}
+                                        onValueChange={(value, index) => this.onValueChange(wheelIndex, value, index)}
+                                        selectedValue={selectedItem[wheelIndex].value}
+                                        {...pickerProps}
+                                    >
+                                        {this.renderPickerItems(wheelIndex)}
+                                    </Picker>
+                                </View>
                             )}
-                        </View>
+                        )}
                     </View>
+                </View>
+                }
                 {this.renderIcon()}
             </View>
         );
