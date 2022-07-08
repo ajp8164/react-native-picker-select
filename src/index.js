@@ -2,7 +2,7 @@ import React, { PureComponent } from 'react';
 import { Keyboard, Modal, Platform, Text, TextInput, TouchableOpacity, View, Dimensions } from 'react-native';
 import PropTypes from 'prop-types';
 import isEqual from 'lodash.isequal';
-import { Picker } from '@react-native-community/picker';
+import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import { defaultStyles } from './styles';
@@ -45,6 +45,7 @@ export default class RNPickerSelect extends PureComponent {
         children: PropTypes.any, // eslint-disable-line react/forbid-prop-types
         onOpen: PropTypes.func,
         useNativeAndroidPickerStyle: PropTypes.bool,
+        fixAndroidTouchableBug: PropTypes.bool,
 
         // Custom Modal props (iOS only)
         doneText: PropTypes.string,
@@ -100,6 +101,7 @@ export default class RNPickerSelect extends PureComponent {
         useNativeAndroidPickerStyle: true,
         useDatePicker: false,
         dateFormat: 'M/D/YYYY',
+        fixAndroidTouchableBug: false,
         doneText: 'Done',
         onDonePress: null,
         onUpArrow: null,
@@ -173,65 +175,6 @@ export default class RNPickerSelect extends PureComponent {
         }
     }
 
-    static getDerivedStateFromProps(nextProps, prevState) {
-        // update items if items or placeholder prop changes
-
-        // Backward compatibility
-        // Create array wrapper for single wheel
-        let items = nextProps.items;
-        if (!Array.isArray(items[0])) {
-            items = [items];
-        }
-        // Create array wrapper for single wheel
-        let placeholder = nextProps.placeholder;
-        if (!Array.isArray(placeholder)) {
-            placeholder = [placeholder];
-        }
-
-        items = RNPickerSelect.handlePlaceholder({
-            items,
-            placeholder,
-        });
-        const itemsChanged = !isEqual(prevState.items, items);
-
-        // update selectedItem if value prop is defined and differs from currently selected item
-        const { selectedItem, idx } = RNPickerSelect.getSelectedItem({
-            items,
-            key: nextProps.itemKey,
-            value: nextProps.value,
-        });
-
-        const selectedItemChanged =
-            !isEqual(nextProps.value, undefined) && !isEqual(prevState.selectedItem, selectedItem);
-
-        if (itemsChanged || selectedItemChanged) {
-            if (selectedItemChanged) {
-                // Collect the values into an array for output to calling component.
-                let outputValue = [];
-                let outputIndex = idx;
-                selectedItem.forEach(i => {
-                    outputValue.push(i.value);
-                });
-                // Backward compatiblity
-                //   If selected item is a one element array (one wheel) then unwrap the item from the array
-                //   and pass back a simple object rather than a single element array.
-                if (outputValue.length === 1) {
-                    outputValue = outputValue[0];
-                    outputIndex = idx ? idx[0] : null;
-                }
-                
-                nextProps.onValueChange(outputValue, outputIndex);
-            }
-
-            return {
-                ...(itemsChanged ? { items } : {}),
-                ...(selectedItemChanged ? { selectedItem } : {}),
-            };
-        }
-
-        return null;
-    }
-
     constructor(props) {
         super(props);
 
@@ -279,6 +222,32 @@ export default class RNPickerSelect extends PureComponent {
         this.togglePicker = this.togglePicker.bind(this);
         this.renderInputAccessoryView = this.renderInputAccessoryView.bind(this);
     }
+
+    componentDidUpdate = (prevProps, prevState) => {
+        // update items if items or placeholder prop changes
+        const items = RNPickerSelect.handlePlaceholder({
+            placeholder: this.props.placeholder,
+        }).concat(this.props.items);
+        const itemsChanged = !isEqual(prevState.items, items);
+
+        // update selectedItem if value prop is defined and differs from currently selected item
+        const { selectedItem, idx } = RNPickerSelect.getSelectedItem({
+            items,
+            key: this.props.itemKey,
+            value: this.props.value,
+        });
+        const selectedItemChanged =
+            !isEqual(this.props.value, undefined) && !isEqual(prevState.selectedItem, selectedItem);
+
+        if (itemsChanged || selectedItemChanged) {
+            this.props.onValueChange(selectedItem.value, idx);
+
+            this.setState({
+                ...(itemsChanged ? { items } : {}),
+                ...(selectedItemChanged ? { selectedItem } : {}),
+            });
+        }
+    };
 
     onUpArrow() {
         const { onUpArrow } = this.props;
@@ -692,11 +661,21 @@ export default class RNPickerSelect extends PureComponent {
     }
 
     renderAndroidHeadless() {
-        const { disabled, Icon, style, pickerProps, onOpen, touchableWrapperProps, useDatePicker } = this.props;
+        const {
+            disabled,
+            Icon,
+            style,
+            pickerProps,
+            onOpen,
+            touchableWrapperProps,
+            useDatePicker,
+            fixAndroidTouchableBug,
+        } = this.props;
         const { selectedItem, itemWidth, labelWidth } = this.state;
 
+        const Component = fixAndroidTouchableBug ? View : TouchableOpacity;
         return (
-            <TouchableOpacity
+            <Component
                 testID="android_touchable_wrapper"
                 onPress={onOpen}
                 activeOpacity={1}
@@ -753,7 +732,7 @@ export default class RNPickerSelect extends PureComponent {
                     </View>
                     }
                 </View>
-            </TouchableOpacity>
+            </Component>
         );
     }
 
@@ -860,6 +839,7 @@ export default class RNPickerSelect extends PureComponent {
         if (children || !useNativeAndroidPickerStyle) {
             return this.renderAndroidHeadless();
         }
+
         return this.renderAndroidNativePickerStyle();
     }
 }
