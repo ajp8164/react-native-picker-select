@@ -1,7 +1,43 @@
-### 8.0.0 (pending)
+## 8.0.4
+
+##### Bugfix
+
+-   Moved dep to @react-native-picker/picker
+
+---
+
+## 8.0.3
+
+##### Bugfix
+
+-   Fix `Cannot update component inside function` error (#346)
+
+---
+
+## 8.0.2
+
+##### Bugfix
+
+-   Add `fixAndroidTouchableBug` prop (#354)
+
+---
+
+## 8.0.1
+
+##### Bugfix
+
+-   Locked @react-native-community/picker to 1.6.0 to fix Expo issues
+-   Add togglePicker method to Picker component typescript definition (#360)
+-   Fix wrong PickerProps import in index.d.ts (#352)
+-   Fixed inputWeb to be a TextStyle, not ViewStyle (#365)
+
+---
+
+## 8.0.0
 
 ##### Breaking Changes
 
+-   Now using [@react-native-community/picker](https://github.com/react-native-community/react-native-picker#readme) under the hood (#340). For that reason, this library now requires React Native 0.60 or above. If using Expo, SDK38 or above is required.
 -   Replaced item prop `displayValue` with `inputLabel` (#336)
 
 ##### New
@@ -10,7 +46,7 @@
 
 ---
 
-### 7.0.0
+## 7.0.0
 
 ##### Breaking Changes
 

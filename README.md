@@ -21,7 +21,16 @@ For either platform, you can alternatively pass down a child element of your cho
 
 ### Installing
 
-`npm install react-native-picker-select`
+```
+npm install react-native-picker-select
+
+# React Native users
+npm install @react-native-picker/picker
+npx pod-install
+
+# Expo
+expo install @react-native-picker/picker
+```
 
 ### Basic Usage
 
@@ -44,10 +53,11 @@ export const Dropdown = () => {
 
 ### Versioning
 
-| Component | React   |
-| --------- | ------- |
-| >= 3.0.0  | >= 16.3 |
-| < 3.0.0   | < 16.3  |
+| Version       | Notes                                                                                                                                                |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| >=&nbsp;8.0.0 | Uses [@react-native-picker/picker](https://github.com/react-native-picker/picker#readme). React Native 0.60 or above. If using Expo, SDK38 or above. |
+| >=&nbsp;3.0.0 | React v16.3 or above.                                                                                                                                |
+| <&nbsp;3.0.0  | React v16.2 or below.                                                                                                                                |
 
 ### Props
 
@@ -66,6 +76,7 @@ export const Dropdown = () => {
 | `touchableWrapperProps`                         | Additional props to pass to the touchable wrapping the TextInput (some props are used in core functionality so use this carefully)                                                                                                                                                                                                                                                                                                                                                                      | object                   |
 | `onOpen`<br>                                    | Callback triggered right before the opening of the picker<br>_Not supported when `useNativeAndroidPickerStyle={true}`_                                                                                                                                                                                                                                                                                                                                                                                  | function                 |
 | `useNativeAndroidPickerStyle`<br>_Android only_ | The component defaults to using the native Android Picker in its un-selected state. Setting this flag to `false` will mimic the default iOS presentation where a tappable TextInput is displayed.<br>_More details in [styling](#styling)_                                                                                                                                                                                                                                                              | boolean                  |
+| `fixAndroidTouchableBug`<br>_Android only_      | Experimental flag to fix issue [#354](https://github.com/lawnstarter/react-native-picker-select/issues/354)                                                                                                                                                                                                                                                                                                                                                                                             | boolean                  |
 | `InputAccessoryView`<br>_iOS only_              | Replace the InputAcessoryView section (bar with tabbing arrown and Done button) of the opened picker with your own custom component. Can also return `null` here to hide completely. While this bar is typical on `select` elements on the web, the [interface guidelines](https://developer.apple.com/ios/human-interface-guidelines/controls/pickers/) does not include it. View the [snack](https://snack.expo.io/@lfkwtz/react-native-picker-select) to see examples on how this can be customized. | Component                |
 | `doneText`<br>_iOS only_                        | "Done" default text on the modal. Can be overwritten here                                                                                                                                                                                                                                                                                                                                                                                                                                               | string                   |
 | `onUpArrow / onDownArrow`<br>_iOS only_         | Presence enables the corresponding arrow<br>- Closes the picker<br>- Calls the callback provided                                                                                                                                                                                                                                                                                                                                                                                                        | function                 |
@@ -101,9 +112,40 @@ All properties mentioned below must be nested under the `style` prop. Examples o
 -   You can pass a component of your choosing (css, image, svg, etc..) for use as the icon. For ease of use, consider a library such as [react-native-shapes](https://github.com/lfkwtz/react-native-shapes) or [react-native-vector-icons](https://github.com/oblador/react-native-vector-icons).
 -   Examples of different icons and their usage can be found [on the example snack](https://snack.expo.io/@lfkwtz/react-native-picker-select).
 
+## Accessibility
+
+If you need to add accessibility props to the rendered component, you may use `pickerProps` and `touchableWrapperProps` to pass these through.
+
+`pickerProps` accepts an object of props that get passed directly to the native `<Picker />` component.
+`touchableWrapperProps` also accepts an object of props, but this gets passed to a `<TouchableOpacity />` that toggles the visibility of the picker.<sup>\*note: `touchableWrapperProps` is not supported on web or when `useNativeAndroidPickerStyle={true}`</sup>
+
+### Accessibility Example
+
+In the example below, we render the picker with supplementary description text, but for screen readers, we omit this by passing just the title to the `accessibilityLabel` prop.
+
+```js
+const selectedItem = {
+    title: 'Selected item title',
+    description: 'Secondary long descriptive text ...',
+};
+
+export const Dropdown = () => {
+    return (
+        <RNPickerSelect
+            pickerProps={{
+                accessibilityLabel: selectedItem.title,
+            }}
+        >
+            <Text>{selectedItem.title}</Text>
+            <Text>{selectedItem.description}</Text>
+        </RNPickerSelect>
+    );
+};
+```
+
 ## Testing
 
-This component has been tested on React Native v0.51 - v0.61
+Test suite included. This component has been used and tested since React Native v0.51.
 
 [![BrowserStack](https://i.imgur.com/cOdhMed.png)](https://www.browserstack.com/)
 
